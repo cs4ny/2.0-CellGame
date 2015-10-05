@@ -1,0 +1,187 @@
+#Project Cell Game
+import pygame
+import cellGameClasses as cg
+import random as r
+import collisionDetection as cd
+
+# GLOBAL CONSTANTS
+COLOUR = [ (255, 255, 255), (0, 0, 0), (96, 96, 96), (255, 0, 0), (0, 255, 0),
+            (0, 0, 255), (255, 255, 0), (255, 0, 255), (255, 128, 0) ]
+
+WHITE = 0
+BLACK = 1
+GREY = 2
+RED = 3
+GREEN = 4
+BLUE = 5
+YELLOW = 6
+PURPLE = 7
+ORANGE = 8
+
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 800
+SCREEN_SIZE = (SCREEN_WIDTH,SCREEN_HEIGHT)
+
+FPS = 30
+
+# GAME CLASS
+class Game():
+
+    def __init__(self):
+        """ Constructor for Game Class """
+
+        # Initialize pygame, screen and clock
+        pygame.init()
+        self.screen = pygame.display.set_mode(SCREEN_SIZE)
+        clock = pygame.time.Clock()
+
+        # Initialize all variables to starting values
+        self.initialize()
+
+        loop = True
+        while loop:
+            # Process Events / Game Logic / Draw / Pause 
+            loop = self.processEvents()
+            self.runLogic()
+            self.displayFrame()
+            clock.tick(FPS)
+
+        # Close window and exit
+        pygame.quit()
+        
+    # end __init__()
+
+
+    def initialize(self):
+        """ Set all variables for beginning of game. """
+
+        
+        #Create an Enemies Cells List
+        self.enemiesList = []
+        
+        self.enemies = cg.Cell(r.randrange(100, SCREEN_WIDTH-150),r.randrange(100, SCREEN_HEIGHT-150),150,3,3,COLOUR[YELLOW])
+            
+        self.enemiesList.append(self.enemies)
+
+        #Initialize self.timer
+        self.timer = False
+        self.time = 0
+        
+    # end initialize()
+
+
+    def processEvents(self):
+
+        loop = True
+
+        # EVENT HANDLING
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                loop = False
+
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    #Set an empty List for size calculation
+                    self.sList = []
+
+                    #Append enemies' sizes into size list
+                                
+                    for enemies in self.enemiesList:
+                        self.sList.append(enemies.size)
+
+                    #Take the sum of all enemies'sizes and divide by len + 1
+                    self.splitSz = (sum(self.sList)) // (len(self.enemiesList)+1)
+
+                    #Update enemies'size
+                    for enemies in self.enemiesList:
+                        enemies.size = self.splitSz
+
+                    #Adding a new enemies cell
+                    self.nEnemies = cg.Cell(self.enemies.x+self.splitSz,self.enemies.y+self.splitSz,self.splitSz,5,5,COLOUR[RED])
+
+                    #Append new enemies cell to the playerList
+                    self.enemiesList.append(self.nEnemies)
+            
+        return loop
+
+    # end processEvents()
+
+
+    def runLogic(self):
+
+        #Update Enemies Cells
+        for enemies in self.enemiesList:
+            enemies.update(self.screen)
+                        
+
+        if self.timer:
+            self.time += 0.1
+
+        #Reconnection of Enemies'cells
+        for eindex in range (len(self.enemiesList)):
+            #Check if out of list
+            if eindex < (len(self.enemiesList)-1):
+                #Collision of 2 players'cell
+                if cd.ecircleCollision(self.enemiesList[eindex],self.enemiesList[eindex+1]) == False:
+                    print("not collide")
+                    if self.enemiesList[eindex].x > self.enemiesList[eindex+1].x:
+                        self.bigX = self.enemiesList[eindex]
+                        self.smallX = self.enemiesList[eindex+1] 
+                    else:
+                        self.bigX = self.enemiesList[eindex+1]
+                        self.smallX = self.enemiesList[eindex] 
+
+                    if self.enemiesList[eindex].y > self.enemiesList[eindex+1].y:
+                        self.bigY = self.enemiesList[eindex]
+                        self.smallY = self.enemiesList[eindex+1] 
+                    else:
+                        self.bigY = self.enemiesList[eindex+1]
+                        self.smallY = self.enemiesList[eindex] 
+
+                    self.smallX.dx += 5
+                    self.bigX.dx -= 5
+                    self.smallX.dy += 5
+                    self.bigX.dy -= 5
+                    
+                    
+
+                if cd.ecircleCollision(self.enemiesList[eindex],self.enemiesList[eindex+1]):
+                    print("colide")
+                    self.enemiesList[eindex].setdx(0)
+                    self.enemiesList[eindex].setdy(0)
+                    self.enemiesList[eindex+1].setdx(0)
+                    self.enemiesList[eindex+1].setdy(0)
+                    self.enemiesList[eindex+1].x = self.enemiesList[eindex].x + self.enemiesList[eindex].size
+                    self.enemiesList[eindex].y = self.enemiesList[0].y
+
+                    #Set Timer to True
+                    self.timer = True
+                    print(self.time)
+                    if self.time > 50:
+                        self.enemiesList[eindex].size += self.enemiesList[eindex+1].size
+                        self.enemiesList.remove(self.enemiesList[eindex+1])
+                                          
+                    
+        
+
+    # end runLogic()
+
+
+    def displayFrame(self):
+        # Draw Commands
+        self.screen.fill(COLOUR[BLACK])
+
+        #Draw Enemies Cells
+        for enemies in self.enemiesList:
+            enemies.draw(self.screen)
+
+        # Update screen
+        pygame.display.flip()
+
+    # end displayFrame()
+
+# end Game() class    
+
+
+# Create a Game object to begin
+Game()
