@@ -1,0 +1,62 @@
+# Collision Detection for Objects
+
+def hcircleCollision(cirObj1, cirObj2):
+    """ Hard Collison : Collide with middle of circle """
+    # Get dimensions for each circle
+    cir1Info = cirObj1.getInfo()
+    cir2Info = cirObj2.getInfo()
+
+    # Create variables for the edges circles
+    x1 = cir1Info[0]
+    y1 = cir1Info[1]
+    size1 = cir1Info[2]//2
+    x1size = x1 + size1
+    y1size = y1 + size1
+    
+    x2 = cir2Info[0]
+    y2 = cir2Info[1]
+    size2 = cir2Info[2]//2
+    x2size = x2 + size2
+    y2size = y2 + size2
+
+
+    # Check for overlap of circles
+    if x2size > x1 and y2size  > y1 and x1size  > x2 and y1size  > y2:
+        return True
+    else:
+        return False
+
+def ecircleCollision(cirObj1, cirObj2):
+    """ Easy Collision: Collide with edge of circles"""
+    # Get dimensions for cicles
+    cir1Info = cirObj1.getInfo()
+    cir2Info = cirObj2.getInfo()
+
+    # Create variables for the edges of circles
+    x1 = cir1Info[0]
+    x1end = cir1Info[0]+cir1Info[2]
+    y1 = cir1Info[1]
+    y1end = cir1Info[1]+cir1Info[2]
+    
+    x2 = cir2Info[0]
+    x2end = cir2Info[0]+cir2Info[2]
+    y2 = cir2Info[1]
+    y2end = cir2Info[1]+cir2Info[2]
+
+
+    # Check for overlap of circles
+    if x1 < x2end and x1end > x2 and y1end  > y2 and y1 < y2end:
+        return True
+    else:
+        return False
+
+
+
+
+
+
+
+
+
+
+        
