@@ -1,0 +1,216 @@
+#Class for Cell Game
+
+import pygame
+import random
+import math
+import time
+
+# CONSTANTS
+WHITE = (255,255,255)
+BLACK = (0,0,0)
+
+class Cell():
+
+    def __init__(self, x, y, size, dx, dy, colour):
+        """ Constructor for a block """
+
+        self.x = x
+        self.y = y
+        self.size = size
+        self.dx = dx
+        self.dy = dy
+        self.colour = colour
+        self.numCircles = 1
+        self.font = pygame.font.SysFont("Calibri",10, True, False)
+    
+    def getInfo(self):
+        return [self.x, self.y, self.size]
+
+    def setdx(self, dx):
+        self.dx = dx
+
+    def setdy(self, dy):
+        self.dy = dy
+
+    def getdx(self):
+        return self.dx
+
+    def getdy(self):
+        return self.dy
+
+    def update(self, screen):
+        """ Update the status of the bouncing block. """
+
+        # Move
+        self.x += self.dx
+        self.y += self.dy
+
+        # Bounce off of boundaries
+        if self.x < 0 or (self.x + self.size) > screen.get_width():
+            movChance = random.randrange(0,2)
+            if movChance == 0:
+                self.dx *= -1
+            if movChance == 1:
+                self.x = (random.randrange(0,(screen.get_width()-75)))
+        if self.y < 0 or (self.y + self.size) > screen.get_height():
+            movChance2 = random.randrange(0,2)
+            if movChance2 == 0:
+                self.dy *= -1
+            if movChance2 == 1:
+                self.y = (random.randrange(0,(screen.get_width()-75)))
+            
+    
+    def draw(self, screen):
+        """ Draw the block to the screen. """
+
+        for circles in range (self.numCircles):
+            # Draw Block
+            pygame.draw.ellipse(screen,self.colour,[self.x,self.y,self.size,self.size])
+
+        # Draw Times Block Clicked Centered in Block
+        scoreText = self.font.render(str(self.size), True, BLACK)
+        textX = (self.x + self.size // 2) - (scoreText.get_width() // 2)
+        textY = (self.y + self.size // 2) - (scoreText.get_height() // 2)
+
+        screen.blit(scoreText, [textX,textY])
+# end class Block()
+
+#Player Class
+class Player(Cell):
+    """ Player Class"""
+    def __init__(self, x, y, size, dx, dy, colour):
+        Cell.__init__(self, x, y, size, dx, dy, colour)
+        self.state = "regular"
+        self.time = 0
+
+    def setState(self,state):
+        """ Change of State """
+        self.state = state
+        
+    def update(self,screen):
+        """ Update """
+
+        #Timer Start
+        self.time += 1
+        
+        #Mouse Position
+        self.mousePosition = pygame.mouse.get_pos()
+        self.mouseX = self.mousePosition[0]
+        self.mouseY = self.mousePosition[1]
+
+        #X and Y differences from mouse to object
+        self.xdifference = abs(self.mouseX - self.x)
+        self.ydifference = abs(self.mouseY - self.y)
+
+        #Check if the xdifference is 0
+        if self.xdifference == 0:
+            self.xdifference = 1
+            
+        #Ratio for figuring out the angle 
+        self.ratio = self.ydifference / self.xdifference
+
+        #Distance between object and mouse in a right triangle
+        self.distance = math.sqrt( math.pow(self.xdifference,2) + math.pow(self.ydifference,2) )
+            
+        #Angle in which object moves
+        self.movAngle = math.degrees(math.atan(self.ratio))
+
+        #Regular State
+        if self.state == "regular":
+
+            #Reset timer
+            self.time = 0
+            
+            #The speed set for the object
+            self.dx = 2*math.cos(math.radians(self.movAngle))
+            self.dy = 2*math.sin(math.radians(self.movAngle))
+
+            # Bounce off of boundaries
+            if self.x < 0:
+                self.x = 0 + self.size
+            elif self.x + self.size > screen.get_width():
+                self.x = screen.get_width() - self.size
+            if self.y < 0:
+                self.y = 0 + self.size
+            elif self.y + self.size > screen.get_height():
+                self.y = screen.get_height() - self.size
+
+        #Launch State
+        if self.state == "launch":
+            
+            #Action for under a certain amount of time
+            if self.time < 25:
+
+                # Setted Movement
+                self.dx = 10
+                self.dy = 10
+                    
+                # Bounce off of boundaries
+                if self.x < 0 or self.x + self.size > screen.get_width():
+                    self.dx *= -1
+                if self.y < 0 or self.y + self.size > screen.get_height():
+                    self.dy *= -1
+
+                #If near mouse : Stop, Change State, Reset timer
+                if self.distance < 50:
+                    self.dx = 0
+                    self.dy = 0
+                    self.state = "regular"
+                    self.time = 0
+
+            #Else return back to regular, Reset Timer
+            else:
+                self.state = "regular"
+                self.time = 0
+
+    #Speed for different distances / different object's sizes between mouse and object
+        if self.size < 150:
+            if self.distance < 50:
+                self.dx = 0
+                self.dy = 0
+            if self.distance > 100:
+                self.dx += 0.5
+                self.dy += 0.5
+            if self.distance > 300:
+                self.dx += 1.5
+                self.dy += 1.5
+            if self.distance > 500:
+                self.dx += 2
+                self.dy += 2
+
+        if self.size < 300:
+            if self.distance < 25:
+                self.dx = 0
+                self.dy = 0
+            if self.distance > 200:
+                self.dx += 0.5
+                self.dy += 0.5
+            if self.distance > 600:
+                self.dx += 1.5
+                self.dy += 1.5
+
+        if self.size < 500:
+            if self.distance < 25:
+                self.dx = 0
+                self.dy = 0
+            if self.distance > 300:
+                self.dx += 0.5
+                self.dy += 0.5
+            if self.distance > 500:
+                self.dx += 1
+                self.dy += 1
+                    
+
+        #Check for negative and positive directions
+        if self.mouseX < self.x :
+            self.dx *= -1
+        if self.mouseY < self.y:
+            self.dy *= -1
+
+        #Moving of object 
+        self.x += self.dx
+        self.y += self.dy
+# end class Player
+
+ 
+
