@@ -1,0 +1,410 @@
+#Project Cell Game
+import pygame
+import cellGameClasses as cg
+import random as r
+import collisionDetection as cd
+import math
+
+# GLOBAL CONSTANTS
+COLOUR = [ (255, 255, 255), (0, 0, 0), (96, 96, 96), (255, 0, 0), (0, 255, 0),
+            (0, 0, 255), (255, 255, 0), (255, 0, 255), (255, 128, 0) ]
+
+WHITE = 0
+BLACK = 1
+GREY = 2
+RED = 3
+GREEN = 4
+BLUE = 5
+YELLOW = 6
+PURPLE = 7
+ORANGE = 8
+
+SCREEN_WIDTH = 1250
+SCREEN_HEIGHT = 950
+SCREEN_SIZE = (SCREEN_WIDTH,SCREEN_HEIGHT)
+
+FPS = 30
+
+# GAME CLASS
+class Game():
+
+    def __init__(self):
+        """ Constructor for Game Class """
+
+        # Initialize pygame, screen and clock
+        pygame.init()
+        self.screen = pygame.display.set_mode(SCREEN_SIZE)
+        clock = pygame.time.Clock()
+
+        # Initialize all variables to starting values
+        self.initialize()
+
+        loop = True
+        while loop:
+            # Process Events / Game Logic / Draw / Pause 
+            loop = self.processEvents()
+            self.runLogic()
+            self.displayFrame()
+            clock.tick(FPS)
+
+        # Close window and exit
+        pygame.quit()
+        
+    # end __init__()
+
+
+    def initialize(self):
+        """ Set all variables for beginning of game. """
+
+        #Set Player List, split size, timer and time value
+        self.playerList = []
+        self.mainP = cg.Player(450,750,50,0,0,COLOUR[WHITE])
+        self.playerList.append(self.mainP)
+        self.splitSz = 0
+        self.timer = False
+        self.time = 0
+
+        #Set Enemies timer, time value, quadrant to move towards player and boolean for split
+        self.eTimer = False
+        self.eTime = 0
+        self.edx = 1
+        self.edy = 1
+        self.enemiesSplit = False
+
+        #Create a Food Cells List
+        self.cellsList = []
+        for i in range (5):
+            self.cells = cg.Cell(r.randrange(0, SCREEN_WIDTH),r.randrange(0, SCREEN_HEIGHT),20,0,0,COLOUR[GREEN])
+            self.cellsList.append(self.cells)
+
+        #Create a Virus Cells List
+        self.virusList = []
+        for i in range (5):
+            self.virus = cg.Cell(r.randrange(0, SCREEN_WIDTH),r.randrange(0, SCREEN_HEIGHT),40,0,0,COLOUR[RED])
+            self.virusList.append(self.virus)
+
+        #Create a Split Enemies Cells List
+        self.enemiesList = []
+        self.enemies = cg.Cell(r.randrange(50, SCREEN_WIDTH-50),r.randrange(50, SCREEN_HEIGHT-50),150,r.randrange(2,8),r.randrange(2,8),COLOUR[YELLOW])
+        self.enemiesList.append(self.enemies)
+            
+
+    # end initialize()
+
+
+    def processEvents(self):
+
+        loop = True
+
+        # EVENT HANDLING
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                loop = False
+                
+            elif event.type == pygame.KEYDOWN:
+                #Player Splitting
+                if event.key == pygame.K_SPACE:
+
+                    #Set an empty List for size calculation
+                    self.sList = []
+
+                    #Append players' sizes into size list
+                    for players in self.playerList:
+                        self.sList.append(players.size)
+
+                    #Take the sum of all players'sizes and divide by len + 1
+                    self.splitSz = (sum(self.sList)) // (len(self.playerList)+1)
+
+                    #Update players'size
+                    for players in self.playerList:
+                        players.size = self.splitSz
+
+                    #Adding a new player cell
+                    self.nPlayer = cg.Player(self.mainP.x+self.splitSz,self.mainP.y+self.splitSz,self.splitSz,0,0,COLOUR[WHITE])
+
+                    #See where Cell will split according to MouseX
+                    if self.mouseX < self.mainP.x:
+                        self.mainP.setState("launch")
+                    elif self.mouseX > self.mainP.x:
+                        self.nPlayer.setState("launch")
+
+                    #Append new player cell to the playerList
+                    self.playerList.append(self.nPlayer)
+
+            #Enemies Splitting
+            if self.enemiesSplit:
+                #Set timer to True and the splitting enemies
+                self.eTimer = True
+                self.sEnemies = self.splitEnemies
+
+                #Set an empty List for size enemies calculation
+                self.sEList = []
+
+                #Set a one enemies list to control the split enemy
+                self.oEList = []
+                self.oEList.append(self.sEnemies)
+                    
+                #Append enemies' sizes into size list              
+                for enemies in self.oEList:
+                    self.sEList.append(enemies.size)
+
+                #Take the sum of all enemies'sizes and divide by (len + 1)
+                self.eSplitSz = (sum(self.sEList)) // (len(self.oEList)+1)
+
+                #Update enemies'size
+                for enemies in self.oEList:
+                    enemies.size = self.eSplitSz
+
+                #Split towards player
+                if self.mainP.x < self.sEnemies.x:
+                    self.edx *= -1
+
+                if self.mainP.y < self.sEnemies.y:
+                    self.edy *= -1
+
+                #Adding a new enemies cell
+                self.nEnemies = cg.Cell(self.sEnemies.x+self.eSplitSz,self.sEnemies.y+self.eSplitSz,self.eSplitSz,(self.edx*6),(self.edy*6),COLOUR[RED])
+
+                #Fix values so it doesn't loop through the wrong value
+                self.edx = 1
+                self.edy = 1
+
+                #Append new enemies cell to the enemies splitting list
+                self.oEList.append(self.nEnemies)
+                self.enemiesSplit = False
+    
+        return loop
+
+    # end processEvents()
+
+
+    def runLogic(self):
+        #Mouse Position
+        self.mousePosition = pygame.mouse.get_pos()
+        self.mouseX = self.mousePosition[0]
+        self.mouseY = self.mousePosition[1]        
+
+        #Update Player
+        for players in self.playerList:
+            players.update(self.screen)
+
+        #Update Food Cells
+        for cells in self.cellsList:
+            cells.update(self.screen)
+
+        #Update Virus Cells
+        for virus in self.virusList:
+            virus.update(self.screen)
+
+        #Update Enemies Cells
+        for enemies in self.enemiesList:
+            enemies.update(self.screen)
+
+        #Update Split Enemies Cells
+        if self.eTimer:
+            for enemies in self.oEList:
+                enemies.update(self.screen)
+
+        #Food Cells Renewal
+        if len(self.cellsList) < 5:
+            for i in range (r.randrange(3,10)):
+                self.cellsList.append(cg.Cell(r.randrange(0, SCREEN_WIDTH),r.randrange(0, SCREEN_HEIGHT),20,0,0,COLOUR[GREEN]))
+
+        #Virus Cells Renewal
+        if len(self.virusList) < 5 :
+            for i in range (r.randrange(1,7)):
+                self.virusList.append(cg.Cell(r.randrange(0, SCREEN_WIDTH),r.randrange(0, SCREEN_HEIGHT),40,0,0,COLOUR[RED]))
+            
+        #Enemies Cells Renewal
+        if len(self.enemiesList) < 10 and len(self.enemiesList) > 4 :
+            for i in range (r.randrange(1,3)):
+                self.enemiesList.append(cg.Cell(r.randrange(50, SCREEN_WIDTH-50),r.randrange(50, SCREEN_HEIGHT-50),r.randrange(50,75),r.randrange(2,8),r.randrange(2,8),COLOUR[YELLOW]))
+
+        #Player vs Food Cells
+        for cells in self.cellsList:
+            for players in self.playerList:
+                if cd.hcircleCollision(players,cells):
+                    players.size += 1
+                    self.cellsList.remove(cells)
+
+        #Player vs Virus Cells
+        for virus in self.virusList:
+            for players in self.playerList:
+                if cd.hcircleCollision(players,virus):
+                    players.size -= 5
+                    self.virusList.remove(virus)
+
+        #Enemies vs Food Cells
+        for cells in self.cellsList:
+            for enemies in self.enemiesList:
+                if cd.hcircleCollision(enemies,cells):
+                    enemies.size += 1
+                    self.cellsList.remove(cells)
+
+        #Enemies vs Virus Cells
+        for virus in self.virusList:
+            for enemies in self.enemiesList:
+                if cd.hcircleCollision(enemies,virus):
+                    enemies.size -= 5
+                    self.virusList.remove(virus)
+
+        #Enemies vs Player Cells
+        for enemies in self.enemiesList:
+            for players in self.playerList:
+                if cd.hcircleCollision(players,enemies):
+                    if players.size > enemies.size:
+                        players.size += (enemies.size//2)
+                        self.enemiesList.remove(enemies)
+                    elif players.size < enemies.size:
+                        enemies.size += (players.size//2)
+                        self.playerList.remove(players)
+                        self.initialize()
+
+        #Enemies vs Enemies
+        for eindex in range (len(self.enemiesList)):
+            if eindex < len(self.enemiesList)-1:
+                if cd.hcircleCollision(self.enemiesList[eindex],self.enemiesList[eindex+1]):
+                    if self.enemiesList[eindex].size > self.enemiesList[eindex+1].size:
+                        self.enemiesList[eindex].size += (self.enemiesList[eindex+1].size//2)
+                        self.enemiesList.remove(self.enemiesList[eindex+1])
+                    elif self.enemiesList[eindex].size < self.enemiesList[eindex+1].size:
+                        self.enemiesList[eindex+1].size += (self.enemiesList[eindex].size//2)
+                        self.enemiesList.remove(self.enemiesList[eindex])
+
+        #Player Split
+        #Set time if split is true for Player 
+        if self.timer:
+            self.time += 0.1   
+
+        #Reconnection of Player'cells
+        for pindex in range (len(self.playerList)):
+            #Check if out of list
+            if pindex < len(self.playerList)-1:
+                #Collision of 2 players'cell
+                if cd.ecircleCollision(self.playerList[pindex],self.playerList[pindex+1]):
+                    self.playerList[pindex+1].x = self.playerList[pindex].x + self.playerList[pindex].size
+                    self.playerList[pindex].y = self.mainP.y
+
+                    #Set Timer to True
+                    self.timer = True
+                    if self.time > 50:
+                        self.timer = False
+                        self.time = 0
+                        self.playerList[pindex].size += self.playerList[pindex+1].size
+                        self.playerList.remove(self.playerList[pindex+1])
+
+
+
+        #Enemies split
+        for enemise in self.enemiesList:
+            #Check distance and enemies size to see if it's big enough to eat the player
+            if math.sqrt((math.pow((abs(self.mainP.x - enemies.x)),2)) + (math.pow((abs(self.mainP.y - enemies.y)),2))) < (enemies.size+50) and enemies.size > (self.mainP.size+(enemies.size // 2 )):
+                self.enemiesSplit = True
+                self.splitEnemies = enemies
+
+        #Set timer for enemies
+        if self.eTimer:
+            self.eTime += 0.1
+
+        #Check timer so enemies won't reconnect immediately
+        if self.eTime > 5:
+            for eindex in range (len(self.oEList)):
+                if eindex < (len(self.oEList)-1):
+                    #Non - collision of 2 enemies'cell
+                    if cd.ecircleCollision(self.oEList[eindex],self.oEList[eindex+1]) == False:
+                        self.e1x = self.oEList[0].x
+                        self.e1y = self.oEList[0].y
+                        self.e2x = self.oEList[eindex+1].x
+                        self.e2y = self.oEList[eindex+1].y
+
+                        #X and Y differences from mouse to object
+                        self.xdifference = abs(self.e1x - self.e2x)
+                        self.ydifference = abs(self.e1y - self.e2y)
+
+                        #Check if the xdifference is 0
+                        if self.xdifference == 0:
+                            self.xdifference = 1
+                            
+                        #Ratio for figuring out the angle 
+                        self.ratio = self.ydifference / self.xdifference
+
+                        #Distance between object and mouse in a right triangle
+                        self.distance = math.sqrt( math.pow(self.xdifference,2) + math.pow(self.ydifference,2) )
+                            
+                        #Angle in which object moves
+                        self.movAngle = math.degrees(math.atan(self.ratio))
+                        
+                        #The speed set for the object
+                        self.oEList[eindex+1].dx = 3*math.cos(math.radians(self.movAngle))
+                        self.oEList[eindex+1].dy = 3*math.sin(math.radians(self.movAngle))
+                        self.oEList[eindex].dx = 3*math.cos(math.radians(self.movAngle))
+                        self.oEList[eindex].dy = 3*math.sin(math.radians(self.movAngle))
+                        
+                        #Follow split enemies
+                        if self.oEList[eindex].x < self.oEList[eindex+1].x :
+                            self.oEList[eindex+1].dx *= -1
+                        if self.oEList[eindex].y < self.oEList[eindex+1].y:
+                            self.oEList[eindex+1].dy *= -1
+                        if self.oEList[eindex].x > self.oEList[eindex+1].x :
+                            self.oEList[eindex].dx *= -1
+                        if self.oEList[eindex].y > self.oEList[eindex+1].y:
+                            self.oEList[eindex].dy *= -1
+                        
+                        #Set split enemies dx and dy
+                        self.oEList[eindex+1].x += self.oEList[eindex+1].dx
+                        self.oEList[eindex+1].y += self.oEList[eindex+1].dy
+                        self.oEList[eindex].x += self.oEList[eindex].dx
+                        self.oEList[eindex].y += self.oEList[eindex].dy
+                        
+
+        #If split enemies collide
+        if self.eTimer:
+            #Reconnection of Enemies'cells
+            for eindex in range (len(self.oEList)):
+                if eindex < (len(self.oEList)-1):
+                    if cd.ecircleCollision(self.oEList[eindex],self.oEList[eindex+1]):
+                        self.eTime = 0
+                        self.eTimer = False
+                        self.oEList[eindex].size += self.oEList[eindex+1].size
+                        self.oEList.remove(self.oEList[eindex+1])
+
+
+
+    # end runLogic()
+
+
+    def displayFrame(self):
+        # Draw Commands
+        self.screen.fill(COLOUR[BLACK])
+
+        #Draw Player
+        for players in self.playerList:
+            players.draw(self.screen)
+
+        #Draw Cells
+        for cells in self.cellsList:
+            cells.draw(self.screen)
+
+        #Draw Virus Cells
+        for virus in self.virusList:
+            virus.draw(self.screen)
+
+        #Draw Enemies Cells
+        for enemies in self.enemiesList:
+            enemies.draw(self.screen)
+
+        #Draw Split Enemies Cells
+        if self.eTimer:
+            for enemies in self.oEList:
+                enemies.update(self.screen)
+
+        # Update screen
+        pygame.display.flip()
+
+    # end displayFrame()
+
+# end Game() class    
+
+
+# Create a Game object to begin
+Game()
