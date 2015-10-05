@@ -1,0 +1,212 @@
+
+
+#Project Cell Game
+import pygame
+import cellGameClasses as cg
+import random as r
+import collisionDetection as cd
+import time
+
+# GLOBAL CONSTANTS
+COLOUR = [ (255, 255, 255), (0, 0, 0), (96, 96, 96), (255, 0, 0), (0, 255, 0),
+            (0, 0, 255), (255, 255, 0), (255, 0, 255), (255, 128, 0) ]
+
+WHITE = 0
+BLACK = 1
+GREY = 2
+RED = 3
+GREEN = 4
+BLUE = 5
+YELLOW = 6
+PURPLE = 7
+ORANGE = 8
+
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 800
+SCREEN_SIZE = (SCREEN_WIDTH,SCREEN_HEIGHT)
+
+FPS = 30
+
+# GAME CLASS
+class Game():
+
+    def __init__(self):
+        """ Constructor for Game Class """
+
+        # Initialize pygame, screen and clock
+        pygame.init()
+        self.screen = pygame.display.set_mode(SCREEN_SIZE)
+        clock = pygame.time.Clock()
+
+        # Initialize all variables to starting values
+        self.initialize()
+
+        loop = True
+        while loop:
+            # Process Events / Game Logic / Draw / Pause 
+            loop = self.processEvents()
+            self.runLogic()
+            self.displayFrame()
+            clock.tick(FPS)
+
+        # Close window and exit
+        pygame.quit()
+        
+    # end __init__()
+
+
+    def initialize(self):
+        """ Set all variables for beginning of game. """
+
+        #Create a Player List
+        self.playerList = []
+        self.mainP = cg.Player(450,750,150,0,0,COLOUR[WHITE])
+        self.playerList.append(self.mainP)
+
+        #Create a Food Cells List
+        self.cellsList = []
+
+        #Initialize split size
+        self.splitSz = 0
+
+        #Initialize self.timer
+        self.timer = False
+        self.time = 0
+
+        #Add Food Cells
+        for i in range (5):
+            self.cells = cg.Cell(r.randrange(0, SCREEN_WIDTH),r.randrange(0, SCREEN_HEIGHT),35,0,0,COLOUR[GREEN])
+            self.cellsList.append(self.cells)
+        
+
+    # end initialize()
+
+
+    def processEvents(self):
+
+        loop = True
+
+        # EVENT HANDLING
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                loop = False
+
+                
+            #Split
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+
+                    #Set an empty List for size calculation
+                    self.sList = []
+
+                    #Append players' sizes into size list
+                    for players in self.playerList:
+                        self.sList.append(players.size)
+
+                    #Take the sum of all players'sizes and divide by len + 1
+                    self.splitSz = (sum(self.sList)) // (len(self.playerList)+1)
+
+                    #Update players'size
+                    for players in self.playerList:
+                        players.size = self.splitSz
+
+                    #Adding a new player cell
+                    self.nPlayer = cg.Player(self.mainP.x+self.splitSz,self.mainP.y+self.splitSz,self.splitSz,0,0,COLOUR[RED])
+
+                    #See where Cell will split according to MouseX
+                    if self.mouseX < self.mainP.x:
+                        self.mainP.setState("launch")
+                    elif self.mouseX > self.mainP.x:
+                        self.nPlayer.setState("launch")
+
+                    #Append new player cell to the playerList
+                    self.playerList.append(self.nPlayer)
+                    
+
+           
+                   
+        return loop
+
+    # end processEvents()
+
+
+    def runLogic(self):
+
+        #Mouse Position
+        self.mousePosition = pygame.mouse.get_pos()
+        self.mouseX = self.mousePosition[0]
+        self.mouseY = self.mousePosition[1]
+
+        #Set time if split is true
+        if self.timer:
+            self.time += 0.1
+            
+        #Update Players
+        for players in self.playerList:
+            players.update(self.screen)
+
+        #Update Food Cells
+        for cells in self.cellsList:
+            cells.update(self.screen)
+
+        #Food Cells Renewal
+        if len(self.cellsList) < 5:
+            for i in range (r.randrange(1,5)):
+                self.cellsList.append(cg.Cell(r.randrange(35, SCREEN_WIDTH-35),r.randrange(35, SCREEN_HEIGHT-35),35,0,0,COLOUR[GREEN]))
+
+        #Player vs Food Cells
+        for cells in self.cellsList:
+            for players in self.playerList:
+                if cd.ecircleCollision(players,cells):
+                    players.size += 5
+                    self.cellsList.remove(cells)
+
+        #Reconnection of Player'cells
+        for pindex in range (len(self.playerList)):
+            #Check if out of list
+            if pindex < len(self.playerList)-1:
+                #Collision of 2 players'cell
+                if cd.ecircleCollision(self.playerList[pindex],self.playerList[pindex+1]):
+                    self.playerList[pindex+1].x = self.playerList[pindex].x + self.playerList[pindex].size
+                    self.playerList[pindex].y = self.mainP.y
+
+                    #Set Timer to True
+                    self.timer = True
+                    print(self.time)
+                    if self.time > 50:
+                        self.playerList[pindex].size += self.playerList[pindex+1].size
+                        self.playerList.remove(self.playerList[pindex+1])
+                        self.time = 0
+        
+                    
+        
+            
+                    
+        
+
+    # end runLogic()
+
+
+    def displayFrame(self):
+        # Draw Commands
+        self.screen.fill(COLOUR[BLACK])
+
+        #Draw Players
+        for players in self.playerList:
+            players.draw(self.screen)
+
+        #Draw Cells
+        for cells in self.cellsList:
+            cells.draw(self.screen)
+
+
+        # Update screen
+        pygame.display.flip()
+
+    # end displayFrame()
+
+# end Game() class    
+
+
+# Create a Game object to begin
+Game()
